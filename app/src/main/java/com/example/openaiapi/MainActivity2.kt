@@ -19,14 +19,14 @@ import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.google.android.material.textfield.TextInputEditText
 import org.json.JSONObject
+import retrofit2.Call
+import retrofit2.Callback
 
 class MainActivity2 : AppCompatActivity() {
     lateinit var queryEdit:EditText
     lateinit var messageRV:RecyclerView
     lateinit var messageRvAdapter: MessageRvAdapter
-    lateinit var timeSender: TextView
     lateinit var messageList:ArrayList<MessageRvModel>
-    var url = "https://api.openai.com/v1/completions"
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged", "ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,12 +35,9 @@ class MainActivity2 : AppCompatActivity() {
         messageRV=findViewById(R.id.rv)
         messageList= ArrayList()
         messageRvAdapter= MessageRvAdapter(messageList)
-
         val layoutManager=LinearLayoutManager(applicationContext)
         messageRV.layoutManager=layoutManager
         messageRV.adapter=messageRvAdapter
-        //messageRV.updateData()
-       // messageRvAdapter.updateData(messageList)
         queryEdit.setOnTouchListener { v, event ->
             if (event.action == MotionEvent.ACTION_UP) {
                 val drawableLeft = queryEdit.compoundDrawablesRelative[0] // Index 0 is for the left drawable
@@ -61,8 +58,10 @@ class MainActivity2 : AppCompatActivity() {
 
                                 messageRvAdapter.notifyDataSetChanged()
                                 messageRV.scrollToPosition(messageRvAdapter.itemCount - 1)
-                                //  timeSender.text="4"
-                                getResponse(queryEdit.text.toString())
+
+                                callRetrofit(queryEdit.text.toString())
+                                queryEdit.text.clear()
+
                             }else{
                                 Toast.makeText(this, "please enter query", Toast.LENGTH_SHORT).show()
                             }
@@ -81,7 +80,12 @@ class MainActivity2 : AppCompatActivity() {
 
 
                     messageRV.scrollToPosition(messageRvAdapter.itemCount - 1)
-                    getResponse(queryEdit.text.toString())
+                    //getResponse(queryEdit.text.toString())
+
+                    callRetrofit(queryEdit.text.toString())
+                    queryEdit.text.clear()
+
+
                 }else{
                     Toast.makeText(this, "please enter query", Toast.LENGTH_SHORT).show()
                 }
@@ -93,63 +97,37 @@ class MainActivity2 : AppCompatActivity() {
 
     }
 
-    private fun getResponse(query: String) {
-        queryEdit.setText("")
-        // creating a queue for request queue.
-        val queue: RequestQueue = Volley.newRequestQueue(applicationContext)
-        // creating a json object on below line.
-        val jsonObject: JSONObject? = JSONObject()
-        // adding params to json object.
-        jsonObject?.put("model", "text-davinci-003")
-        jsonObject?.put("prompt",query)
-        jsonObject?.put("temperature", 0)
-        jsonObject?.put("max_tokens", 100)
-        jsonObject?.put("top_p", 1)
-        jsonObject?.put("frequency_penalty", 0.0)
-        jsonObject?.put("presence_penalty", 0.0)
-        // on below line making json object request.
-        val postRequest: JsonObjectRequest =
-            // on below line making json object request.
-            @SuppressLint("NotifyDataSetChanged")
-            object : JsonObjectRequest(
-                Method.POST, url, jsonObject,
-                Response.Listener { response ->
-                    // on below line getting response message and setting it to text view.
-                    val responseMsg: String =
-                        response.getJSONArray("choices").getJSONObject(0).getString("text")
-                    messageList.add(MessageRvModel(responseMsg,"bot","3.21","4.54"))
+
+    private fun callRetrofit(query: String) {
+        val request = ChatRequest(
+            model = "gpt-3.5-turbo",
+            messages = listOf(
+                Message(role = "system", content = "You are a helpful assistant."),
+                Message(role = "user", content = "$query")
+            )
+        )
+
+// Make the API call
+        val call: Call<ChatResponse> = RetrofitClient.instance.getChatCompletion(request)
+
+        call.enqueue(object : Callback<ChatResponse> {
+            override fun onResponse(call: Call<ChatResponse>, response: retrofit2.Response<ChatResponse>) {
+                if (response.isSuccessful) {
+                    val chatResponse: ChatResponse? = response.body()
+                    // Handle the response here
+                    // chatResponse?.choices?.get(0)?.message?.content
+                    messageList.add(MessageRvModel(chatResponse?.choices?.get(0)?.message?.content.toString(),"bot","3.21","4.54"))
                     messageRV.scrollToPosition(messageRvAdapter.itemCount - 1)
                     messageRvAdapter.notifyDataSetChanged()
-                },
-                // adding on error listener
-                Response.ErrorListener { error ->
-                    Log.e("TAGAPI", "Error is : " + error.message + "\n" + error)
-                }) {
-                override fun getHeaders(): kotlin.collections.MutableMap<kotlin.String, kotlin.String> {
-                    val params: MutableMap<String, String> = HashMap()
-                    // adding headers on below line.
-                    params["Content-Type"] = "application/json"
-                    params["Authorization"] =
-                        "Bearer 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"
-                    return params;
+                    queryEdit.text.clear()
+                } else {
+                    // Handle error
                 }
             }
 
-        // on below line adding retry policy for our request.
-        postRequest.setRetryPolicy(object : RetryPolicy {
-            override fun getCurrentTimeout(): Int {
-                return 50000
+            override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
+                // Handle failure
             }
+        })    }
 
-            override fun getCurrentRetryCount(): Int {
-                return 50000
-            }
-
-            @Throws(VolleyError::class)
-            override fun retry(error: VolleyError) {
-            }
-        })
-        // on below line adding our request to queue.
-        queue.add(postRequest)
-    }
 }
