@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.TextView
@@ -21,12 +22,14 @@ import com.google.android.material.textfield.TextInputEditText
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
-
+import android.widget.ProgressBar
 class MainActivity2 : AppCompatActivity() {
     lateinit var queryEdit:EditText
     lateinit var messageRV:RecyclerView
     lateinit var messageRvAdapter: MessageRvAdapter
+    private lateinit var progressBar: ProgressBar
     lateinit var messageList:ArrayList<MessageRvModel>
+
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged", "ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +38,7 @@ class MainActivity2 : AppCompatActivity() {
         messageRV=findViewById(R.id.rv)
         messageList= ArrayList()
         messageRvAdapter= MessageRvAdapter(messageList)
+        progressBar = findViewById(R.id.progressBar)
         val layoutManager=LinearLayoutManager(applicationContext)
         messageRV.layoutManager=layoutManager
         messageRV.adapter=messageRvAdapter
@@ -99,6 +103,8 @@ class MainActivity2 : AppCompatActivity() {
 
 
     private fun callRetrofit(query: String) {
+        // Show the progress bar while making the API call
+        progressBar.visibility = View.VISIBLE
         val request = ChatRequest(
             model = "gpt-3.5-turbo",
             messages = listOf(
@@ -111,23 +117,50 @@ class MainActivity2 : AppCompatActivity() {
         val call: Call<ChatResponse> = RetrofitClient.instance.getChatCompletion(request)
 
         call.enqueue(object : Callback<ChatResponse> {
+
             override fun onResponse(call: Call<ChatResponse>, response: retrofit2.Response<ChatResponse>) {
+                progressBar.visibility = View.GONE
+                finishAPICall()
+
                 if (response.isSuccessful) {
                     val chatResponse: ChatResponse? = response.body()
-                    // Handle the response here
-                    // chatResponse?.choices?.get(0)?.message?.content
-                    messageList.add(MessageRvModel(chatResponse?.choices?.get(0)?.message?.content.toString(),"bot","3.21","4.54"))
+                    messageList.add(
+                        MessageRvModel(
+                            chatResponse?.choices?.get(0)?.message?.content.toString(),
+                            "bot",
+                            "3.21",
+                            "4.54"
+                        )
+                    )
                     messageRV.scrollToPosition(messageRvAdapter.itemCount - 1)
                     messageRvAdapter.notifyDataSetChanged()
                     queryEdit.text.clear()
                 } else {
-                    // Handle error
+                    Toast.makeText(
+                        this@MainActivity2,
+                        "Failed to get response. Please try again.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
 
             override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
-                // Handle failure
+                Toast.makeText(this@MainActivity2, "Failed to get response. Please try again.", Toast.LENGTH_SHORT)
+                    .show()
+                progressBar.visibility = View.GONE
+                finishAPICall()
             }
-        })    }
+        })
+    }
+    private fun startAPICall() {
+        queryEdit.isEnabled = false
+        // Disable other UI elements if needed
+    }
+
+    private fun finishAPICall() {
+        queryEdit.isEnabled = true
+        // Enable other UI elements if needed
+    }
+
 
 }
