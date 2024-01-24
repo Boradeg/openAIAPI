@@ -1,13 +1,16 @@
 package com.example.openaiapi
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -23,7 +26,12 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import android.widget.ProgressBar
+import java.util.Locale
+import java.util.Objects
+
 class MainActivity2 : AppCompatActivity() {
+    // on below line we are creating a constant value
+    private val REQUEST_CODE_SPEECH_INPUT = 1
     lateinit var queryEdit:EditText
     lateinit var messageRV:RecyclerView
     lateinit var messageRvAdapter: MessageRvAdapter
@@ -50,6 +58,7 @@ class MainActivity2 : AppCompatActivity() {
                 // Check if click occurred on the left drawable
                 if (drawableLeft != null && event.x <= (drawableLeft.bounds.width() + queryEdit.paddingStart)) {
                     Toast.makeText(this, "Clicked on left drawable", Toast.LENGTH_SHORT).show()
+                    startVoice()
                     return@setOnTouchListener true
                 }
 
@@ -99,6 +108,41 @@ class MainActivity2 : AppCompatActivity() {
             false
         })
 
+    }
+
+    private fun startVoice() {
+        // on below line we are calling speech recognizer intent.
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        // on below line we are passing language model
+        // and model free form in our intent
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        )
+        // on below line we are passing our
+        // language as a default language.
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE,
+            Locale.getDefault()
+        )
+        // on below line we are specifying a prompt
+        // message as speak to text on below line.
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak...")
+
+        // on below line we are specifying a try catch block.
+        // in this block we are calling a start activity
+        // for result method and passing our result code.
+        try {
+            startActivityForResult(intent, REQUEST_CODE_SPEECH_INPUT)
+        } catch (e: Exception) {
+            // on below line we are displaying error message in toast
+            Toast
+                .makeText(
+                    this@MainActivity2, " " + e.message,
+                    Toast.LENGTH_SHORT
+                )
+                .show()
+        }
     }
 
 
@@ -162,5 +206,26 @@ class MainActivity2 : AppCompatActivity() {
         // Enable other UI elements if needed
     }
 
+    // on below line we are calling on activity result method.
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
 
+        // in this method we are checking request
+        // code with our result code.
+        if (requestCode == REQUEST_CODE_SPEECH_INPUT) {
+            // on below line we are checking if result code is ok
+            if (resultCode == RESULT_OK && data != null) {
+                // in that case we are extracting the
+                // data from our array list
+                val res: java.util.ArrayList<String> =
+                    data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS) as java.util.ArrayList<String>
+                // on below line we are setting data
+                // to our output text view.
+                Toast.makeText(this, res.toString(), Toast.LENGTH_SHORT).show()
+                queryEdit.setText(Objects.requireNonNull(res)[0].toString()
+                )
+
+            }
+        }
+    }
 }

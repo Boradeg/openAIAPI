@@ -3,7 +3,7 @@
     <style name="Base.Theme.OpenAIAPI" parent="Theme.Material3.DayNight.NoActionBar">
 
         <!-- Customize your light theme here. -->
-         <item name="colorPrimary">#9EAFE4</item>
+         <item name="colorPrimary">@color/card_bg_bot_color</item>
     </style>
 
     <style name="Theme.OpenAIAPI" parent="Base.Theme.OpenAIAPI" />
